@@ -2,14 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Criando a estrutura dos nós */
+/* Criando a estrutura dos nÃ³s */
 struct No {
     char nome[50];
     struct No* esquerda;
     struct No* direita;
 };
 
-/* Função para criar novo nó */
+/* FunÃ§Ã£o para criar novo nÃ³ */
 struct No* criarSala(char* nome) {
     struct No* novaSala = (struct No*) malloc(sizeof(struct No));
     strcpy(novaSala->nome, nome);
@@ -18,7 +18,7 @@ struct No* criarSala(char* nome) {
     return novaSala;
 }
 
-/* Função para o usuário explorar o mapa */
+/* FunÃ§Ã£o para o usuÃ¡rio explorar o mapa */
 void explorarSalas(struct No* raiz, char salasPassadas[][50], int *passos)
 {
     int i = 0;
@@ -40,10 +40,14 @@ void explorarSalas(struct No* raiz, char salasPassadas[][50], int *passos)
             printf("Sala atual: %s\n",raiz->nome);
             printf("d - Direita\n");
             printf("e - Esquerda\n");
+            printf("s - Sair\n");
             printf("Selecione o lado: ");
             scanf(" %1s", lado);
             lado[strcspn(lado, "\n")] = '\0';
-            if(strcmp(lado, "d") == 0)
+            if(strcmp(lado, "s") == 0)
+            {
+                return;
+            }else if(strcmp(lado, "d") == 0)
             {
                 explorarSalas(raiz->direita, salasPassadas, passos);
             }else if(strcmp(lado, "e") == 0)
