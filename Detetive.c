@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define n_suspeitos 2
+
+void limparbuffer(){
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+
+}
+
 /* Criando a estrutura dos nós */
 struct No {
     char nome[50];
@@ -17,8 +25,25 @@ struct Pista {
     struct Pista* direita;
 };
 
+/* Estrutura para controlar os indices da tabela hash */
+struct tabela_hash{
+    char funcao[50];
+    int ocupado;
+    int pistasEncontradas;
+};
+
+/* Função hash para gerar indice */
+int criarHash(char* valor){
+    int soma = 0, i = 0;
+    for (i = 0; valor[i] != '\0'; i++) {
+            soma += valor[i];
+    }
+    int indice = soma % n_suspeitos;
+    return indice;
+}
+
 /* Função para criar nó na árvore de pistas */
-struct Pista* criarPista(const char* pista) {
+struct Pista* criarPista(const char* pista){
     struct Pista* novapista = (struct Pista*) malloc(sizeof(struct Pista));
     strcpy(novapista->pista, pista);
     novapista->esquerda = NULL;
@@ -58,15 +83,26 @@ struct No* criarSala(char* nome, char* pista) {
     return novaSala;
 }
 
+/* Função para verificar se existe os suspeito */
+struct tabela_hash* encontrarSuspeito(char* valor, struct tabela_hash* hash){
+    int indice = criarHash(valor);
+    if (hash[indice].ocupado == 0)
+        return NULL;
+    struct tabela_hash* suspeito = &hash[indice];
+    return suspeito;
+}
+
 /* Função para o usuário explorar o mapa */
-void explorarSalas(struct No* raiz, char salasPassadas[][50], int *passos, struct Pista* pistas)
-{
+void explorarSalas(struct No* raiz, char salasPassadas[][50], int *passos, struct Pista* pistas, struct tabela_hash* hash){
     int i = 0;
     char lado[3];
     /* Conferir se o comodo existe */
     if (raiz != NULL)
     {
         inserirPista(pistas,raiz->pista);
+        struct tabela_hash* suspeito = encontrarSuspeito(raiz->pista, hash);
+        if(suspeito != NULL)
+            suspeito->pistasEncontradas++;
         /* Conferir se o comodo tem saida */
         if(raiz->esquerda == NULL && raiz->direita == NULL)
         {
@@ -74,6 +110,8 @@ void explorarSalas(struct No* raiz, char salasPassadas[][50], int *passos, struc
             (*passos)++;
             printf("\nSala final: %s\n",raiz->nome);
             printf("Pistas na sala: %s\n",raiz->pista);
+            if(suspeito != NULL)
+                printf("Suspeito correspondente: %s\n",suspeito->funcao);
             printf("Comodo sem saidas\n");
         }else
         {
@@ -82,22 +120,25 @@ void explorarSalas(struct No* raiz, char salasPassadas[][50], int *passos, struc
             printf("\n--Explorar mansao--\n");
             printf("Sala atual: %s\n",raiz->nome);
             printf("Pistas na sala: %s\n",raiz->pista);
+            if(suspeito != NULL)
+                printf("Suspeito correspondente: %s\n",suspeito->funcao);
             printf("d - Direita\n");
             printf("e - Esquerda\n");
             printf("s - Sair\n");
             printf("Selecione o lado: ");
             scanf(" %1s", lado);
+            limparbuffer();
             lado[strcspn(lado, "\n")] = '\0';
             if(strcmp(lado, "s") == 0)
             {
                 return;
             }else if(strcmp(lado, "d") == 0)
             {
-                explorarSalas(raiz->direita, salasPassadas, passos, pistas);
+                explorarSalas(raiz->direita, salasPassadas, passos, pistas, hash);
 
             }else if(strcmp(lado, "e") == 0)
             {
-                explorarSalas(raiz->esquerda, salasPassadas, passos, pistas);
+                explorarSalas(raiz->esquerda, salasPassadas, passos, pistas, hash);
 
             }else
             {
@@ -107,10 +148,60 @@ void explorarSalas(struct No* raiz, char salasPassadas[][50], int *passos, struc
     }
 }
 
+/* Inserir suspeito na tabela_hash */
+void inserirNaHash(char* suspeito, struct tabela_hash* hash){
+    int i = 0;
+    int indice = criarHash(suspeito);
+    for (i = 0; i < n_suspeitos; i++)
+    {
+        int pos = (indice + i) % n_suspeitos;
+        if (hash[pos].ocupado == 0 || hash[pos].ocupado == -1)
+        {
+            strcpy(hash[pos].funcao, suspeito);
+            hash[pos].ocupado = 1;
+            hash[pos].pistasEncontradas =0;
+            return;
+        }
+    }
+}
+
+/* função para o usuário fazer a acusação dos suspeitos */
+void verificarSuspeitoFinal(struct tabela_hash* hash){
+    char acusado[50];
+    printf("\nSuspeito acusado: ");
+    fgets(acusado,50,stdin);
+    acusado[strcspn(acusado, "\n")] = '\0';
+    struct tabela_hash* suspeito = encontrarSuspeito(acusado, hash);
+
+
+    if(suspeito == NULL)
+    {
+       printf("\nSuspeito nao encontrado");
+        return;
+    }
+    if(suspeito->pistasEncontradas >= 2)
+    {
+        printf("Suspeito acusado corretamente");
+        return;
+    }
+    else
+    {
+        printf("Suspeito acusado incorretamente");
+        return;
+    }
+}
+
 int main()
 {
+    int i = 0;
+    struct tabela_hash hash[n_suspeitos];
+    for (i = 0; i < n_suspeitos; i++) {
+        hash[i].ocupado = 0;
+    }
+    inserirNaHash("Mordomo",hash);
+    inserirNaHash("Faxineira",hash);
     char salasPassadas[10][50];
-    int passos = 0, i = 0;
+    int passos = 0;
     struct Pista* pistas = criarPista("Pegadas de barro no tapete");
     struct No* raiz = criarSala("Hall de Entrada", "Pegadas de barro no tapete");
     raiz->esquerda = criarSala("Sala de Estar", "Copo quebrado e um lenço de seda caído");
@@ -122,7 +213,7 @@ int main()
     raiz->esquerda->direita->direita = criarSala("Banheiro", "Luvas molhadas sobre a pia");
     raiz->esquerda->direita->esquerda = criarSala("Closet", "Frasco de veneno vazio em meio as roupas");
 
-    explorarSalas(raiz, salasPassadas, &passos, pistas);
+    explorarSalas(raiz, salasPassadas, &passos, pistas, hash);
     /* Mostrar os comodos passados */
     if(passos == 0)
     {
@@ -137,6 +228,7 @@ int main()
 
         printf("\n--Pistas coletadas--\n");
         mostrarPistas(pistas);
+        verificarSuspeitoFinal(hash);
     }
     return;
 
